@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Docscan</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#14202B">
+<meta name="theme-color" content="#111C26">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -13,176 +13,245 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
 <style>
-:root{--bg:#EEF2F5;--surface:#fff;--ink:#14202B;--mute:#5B6B78;--line:#D3DCE3;--amber:#F2A900;--on-amber:#14202B;--ink-btn:#14202B;--on-ink:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media(prefers-color-scheme:dark){:root{--bg:#0E1820;--surface:#172531;--ink:#EAF0F4;--mute:#93A4B1;--line:#2A3B49;--ink-btn:#EAF0F4;--on-ink:#14202B}}
+:root{--bg:#F2F5F7;--card:#fff;--ink:#111C26;--mute:#617080;--line:#E0E6EB;--soft:#F6F8FA;--amber:#F0A500;--amber-ink:#2E2100;--ok:#1E7B4F;--err:#B3261E;--sh:0 1px 2px rgba(17,28,38,.05),0 6px 24px rgba(17,28,38,.06);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root{--bg:#0C141B;--card:#15212B;--ink:#EAF0F4;--mute:#8FA0AE;--line:#25353F;--soft:#1B2933;--ok:#58C08C;--err:#FF8A80;--sh:none}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{max-width:880px;margin:0 auto;padding:16px}
-h1{font-size:1.5rem;margin:8px 0 2px;letter-spacing:-.01em}
-.sub{color:var(--mute);margin:0 0 16px}
-.bar{height:4px;background:var(--amber);border-radius:2px;margin-bottom:16px}
-.row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
-button,label.btn,select{font:inherit;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;min-height:44px}
-button.primary,label.primary{background:var(--amber);border-color:var(--amber);color:var(--on-amber);font-weight:600}
-button.dark{background:var(--ink-btn);color:var(--on-ink);border-color:var(--ink-btn)}
-button:disabled{opacity:.45;cursor:not-allowed}
-button:focus-visible,label.btn:focus-within,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+main{max-width:760px;margin:0 auto;padding:20px 16px 120px}
+header{display:flex;align-items:center;gap:12px;margin:6px 0 22px}
+.logo{width:40px;height:40px;border-radius:11px;background:var(--ink);position:relative;flex:none}
+.logo:before{content:"";position:absolute;left:9px;right:9px;top:19px;height:3px;background:var(--amber);border-radius:2px}
+.logo:after{content:"";position:absolute;inset:8px 11px;border:2px solid #fff;border-radius:3px;opacity:.9}
+@media(prefers-color-scheme:dark){.logo{background:#243441}}
+h1{font:600 1.6rem/1.1 Georgia,"Iowan Old Style","Times New Roman",serif;margin:0;letter-spacing:-.01em}
+header p{margin:2px 0 0;color:var(--mute);font-size:.92rem}
+section{background:var(--card);border-radius:18px;box-shadow:var(--sh);border:1px solid var(--line);padding:20px;margin-bottom:16px}
+h2{font:600 1.15rem/1.2 Georgia,"Iowan Old Style",serif;margin:0 0 4px}
+.hint{color:var(--mute);margin:0 0 14px;font-size:.92rem}
+.step{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--card);font:600 .8rem system-ui;margin-right:8px;vertical-align:2px}
+button,label.btn,select,input[type=url],input[type=text]{font:inherit;color:var(--ink)}
+.btn,button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;padding:0 18px;border-radius:12px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-weight:550;transition:transform .12s,background .12s}
+.btn:active,button:active{transform:scale(.98)}
+.btn:hover,button:hover{background:var(--soft)}
+.primary{background:var(--amber)!important;border-color:var(--amber)!important;color:var(--amber-ink)!important}
+.primary:hover{filter:brightness(.96)}
+.dark{background:var(--ink)!important;color:var(--card)!important;border-color:var(--ink)!important}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+:is(button,label.btn,select,input,textarea,summary):focus-visible,label.btn:focus-within{outline:3px solid var(--amber);outline-offset:2px}
 input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
-.panel h2{font-size:1rem;margin:0 0 8px}
-.opts{display:flex;flex-wrap:wrap;gap:12px;align-items:center;color:var(--mute)}
+#zone{border:2px dashed var(--line);border-radius:16px;padding:28px 16px;text-align:center;background:var(--soft);transition:border-color .15s,background .15s}
+#zone.over{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,var(--card))}
+#zone .row{justify-content:center}
+#zone small{display:block;color:var(--mute);margin-top:12px}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+details{margin-top:14px}
+summary{cursor:pointer;color:var(--mute);font-size:.92rem;padding:4px 0}
+.opts{display:grid;gap:12px;padding:12px 0 2px;color:var(--mute);font-size:.92rem}
+.opts label{display:flex;align-items:center;gap:10px}
+select,input[type=url],input[type=text]{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--card);min-height:44px;width:100%}
+.opts select{width:auto}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:14px 0 6px;opacity:0;transition:opacity .2s}
+.bar.on{opacity:1}
+.bar i{display:block;height:100%;width:0;background:var(--amber);transition:width .25s}
+#msg{min-height:1.4em;color:var(--mute);font-size:.9rem;margin:0 0 12px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
 .pages{display:grid;gap:12px}
-.page{display:grid;grid-template-columns:120px 1fr;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
-.page img{width:100%;border-radius:6px;border:1px solid var(--line)}
-.page textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:14px/1.45 ui-monospace,Menlo,Consolas,monospace;padding:8px;resize:vertical}
-.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-weight:600}
-.ph button{min-height:32px;padding:2px 10px}
-.empty{color:var(--mute);text-align:center;padding:32px 12px;border:2px dashed var(--line);border-radius:12px}
-input[type=url]{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg);color:var(--ink);font:inherit}
-pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font-size:12px}
-details summary{cursor:pointer;color:var(--mute)}
-#status{min-height:1.5em;color:var(--mute)}
-#install{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:520px;margin:auto;background:var(--ink-btn);color:var(--on-ink);border-radius:14px;padding:14px;display:none;gap:10px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.3);z-index:9}
-#install p{margin:0;flex:1;font-size:14px}
-#install button{min-height:40px}
-@media(max-width:520px){.page{grid-template-columns:84px 1fr}}
+.empty{padding:26px 10px;text-align:center;color:var(--mute);border-radius:14px;background:var(--soft)}
+.page{display:grid;grid-template-columns:110px 1fr;gap:14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.thumb{position:relative}
+.thumb img{width:100%;border-radius:8px;border:1px solid var(--line);display:block}
+.thumb b{position:absolute;left:6px;top:6px;background:var(--ink);color:var(--card);font:600 .75rem system-ui;padding:1px 8px;border-radius:99px}
+.tools{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.tools button{min-height:34px;padding:0 10px;font-size:.85rem;font-weight:500}
+.tools .del{margin-left:auto;color:var(--err)}
+textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:10px;background:var(--soft);color:var(--ink);padding:10px;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tiles button{flex-direction:column;align-items:flex-start;gap:0;min-height:68px;padding:10px 14px;text-align:left}
+.tiles span{font-weight:600}
+.tiles small{color:var(--mute);font-weight:400;font-size:.8rem;line-height:1.3}
+.gs{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.gs .row{margin-top:10px}
+.note{font-size:.88rem;color:var(--mute);margin:8px 0 0}
+.note b{color:var(--ink);user-select:all;word-break:break-all}
+#toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translate(-50%,-140%);background:var(--ink);color:var(--card);padding:11px 18px;border-radius:99px;max-width:92%;font-size:.92rem;box-shadow:0 8px 30px rgba(0,0,0,.25);transition:transform .25s;z-index:20}
+#toast.show{transform:translate(-50%,0)}
+#toast.bad{background:var(--err);color:#fff}
+#install{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:560px;margin:auto;background:var(--ink);color:var(--card);border-radius:16px;padding:14px 14px 14px 16px;display:none;gap:10px;align-items:center;box-shadow:0 10px 36px rgba(0,0,0,.35);z-index:15}
+#install p{margin:0;flex:1;font-size:.9rem;line-height:1.35}
+#install button{min-height:40px;padding:0 14px}
+#install .ghost{background:transparent;border-color:transparent;color:inherit;opacity:.8}
+@media(max-width:520px){.page{grid-template-columns:78px 1fr}#zone .btn{flex:1 1 100%}section{padding:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <main>
-<h1>Docscan</h1>
-<p class="sub">Scan pages, read the text, export it anywhere.</p>
-<div class="bar"></div>
+<header><div class="logo" aria-hidden="true"></div><div><h1>Docscan</h1><p>Scan, read, and send documents anywhere.</p></div></header>
 
-<div class="row">
-  <label class="btn primary">Scan with camera<input id="cam" type="file" accept="image/*" capture="environment"></label>
-  <label class="btn">Upload images<input id="up" type="file" accept="image/*" multiple></label>
-  <button id="ocr" class="dark" disabled>Read text (OCR)</button>
-  <button id="clear" disabled>Clear all</button>
-</div>
-<div class="opts">
-  <label>Language <select id="lang"><option value="eng">English</option><option value="eng+hin">English + Hindi</option><option value="eng+guj">English + Gujarati</option><option value="hin">Hindi</option><option value="guj">Gujarati</option></select></label>
-  <label><input type="checkbox" id="enh" checked> Clean up scan (grayscale, sharpen contrast)</label>
-</div>
-<div id="status" role="status"></div>
-
-<div id="pages" class="pages"><div class="empty">No pages yet. Scan or upload a document to start.</div></div>
-
-<div class="panel">
-  <h2>Download</h2>
-  <div class="row" style="margin:0">
-    <button data-x="pdf">PDF (scan, searchable)</button>
-    <button data-x="pdft">PDF (text only)</button>
-    <button data-x="xlsx">Excel .xlsx</button>
-    <button data-x="csv">CSV</button>
-    <button data-x="doc">Word .doc</button>
-    <button data-x="txt">Text .txt</button>
-    <button data-x="json">JSON</button>
+<section>
+  <h2><span class="step">1</span>Add pages</h2>
+  <p class="hint">Photograph a page or pick images from your gallery.</p>
+  <div id="zone">
+    <div class="row">
+      <label class="btn primary">Scan with camera<input id="cam" type="file" accept="image/*" capture="environment"></label>
+      <label class="btn">Choose images<input id="up" type="file" accept="image/*" multiple></label>
+    </div>
+    <small>You can also drop or paste images here.</small>
   </div>
-</div>
-
-<div class="panel">
-  <h2>Send to Google Sheets</h2>
-  <input id="gs" type="url" placeholder="Paste your Apps Script web app URL">
-  <div class="row"><button id="send" class="dark" disabled>Add pages to sheet</button></div>
-  <details><summary>One-time setup (2 minutes)</summary>
-    <ol style="color:var(--mute)">
-      <li>Open a Google Sheet, then Extensions &gt; Apps Script.</li>
-      <li>Paste the code below and save.</li>
-      <li>Deploy &gt; New deployment &gt; Web app. Execute as: Me. Access: Anyone.</li>
-      <li>Copy the web app URL and paste it above.</li>
-    </ol>
-<pre id="code">function doPost(e) {
-  var d = JSON.parse(e.postData.contents);
-  var s = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  d.rows.forEach(function (r) { s.appendRow(r); });
-  return ContentService.createTextOutput('ok');
-}</pre>
-    <button id="copy">Copy code</button>
+  <details><summary>Options</summary>
+    <div class="opts">
+      <label>Language <select id="lang"><option value="eng">English</option><option value="eng+hin">English + Hindi</option><option value="eng+guj">English + Gujarati</option><option value="hin">Hindi</option><option value="guj">Gujarati</option></select></label>
+      <label><input type="checkbox" id="enh" checked> Clean up scans (grayscale and higher contrast)</label>
+      <label><input type="checkbox" id="auto" checked> Read text automatically after adding</label>
+    </div>
   </details>
-</div>
+</section>
+
+<section>
+  <div class="head">
+    <div><h2><span class="step">2</span>Review text</h2><p class="hint" style="margin:0">Fix any mistakes before you export.</p></div>
+    <button id="ocr" class="dark" disabled>Read text</button>
+  </div>
+  <div class="bar" id="bar"><i id="fill"></i></div>
+  <p id="msg" role="status"></p>
+  <div id="pages" class="pages"></div>
+  <div class="row" style="margin-top:12px"><button id="clear" disabled>Remove all pages</button></div>
+</section>
+
+<section>
+  <h2><span class="step">3</span>Export</h2>
+  <p class="hint">Download your scan in the format you need.</p>
+  <div class="tiles">
+    <button data-x="pdf"><span>PDF</span><small>Scan with searchable text</small></button>
+    <button data-x="xlsx"><span>Excel</span><small>.xlsx, one row per line</small></button>
+    <button data-x="doc"><span>Word</span><small>.doc, editable text</small></button>
+    <button data-x="csv"><span>CSV</span><small>For any spreadsheet</small></button>
+    <button data-x="txt"><span>Text</span><small>Plain .txt</small></button>
+    <button data-x="json"><span>JSON</span><small>For developers</small></button>
+    <button data-x="pdft"><span>PDF (text only)</span><small>Latin text only</small></button>
+  </div>
+  <div class="gs">
+    <h2 style="font-size:1.05rem">Send to Google Sheets</h2>
+    <p class="hint" style="margin-bottom:10px">Adds one row per page: date, page number and text.</p>
+    <input id="gs" type="url" placeholder="Paste your Google Sheet link" autocomplete="off">
+    <input id="tab" type="text" placeholder="Tab name (optional, defaults to the first tab)" style="margin-top:8px" autocomplete="off">
+    <p class="note" id="gsnote"></p>
+    <div class="row"><button id="send" class="primary" disabled>Send to Google Sheets</button></div>
+  </div>
+</section>
 </main>
 
-<div id="install" role="dialog" aria-label="Install app">
-  <p id="itext">Install Docscan on your phone for quick scanning, even offline.</p>
+<div id="toast" role="status"></div>
+<div id="install" role="dialog" aria-label="Install Docscan">
+  <p id="itext">Add Docscan to your home screen for one-tap scanning.</p>
   <button id="iyes" class="primary">Install</button>
-  <button id="ino">Not now</button>
+  <button id="ino" class="ghost">Not now</button>
 </div>
 
 <script>
 const $=s=>document.querySelector(s);
-let pages=[],dfp=null;
-const st=m=>$('#status').textContent=m||'';
+let pages=[],dfp=null,busy=false,cfg={enabled:false};
 const LS={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+let tt;function toast(m,bad){const t=$('#toast');t.textContent=m;t.className='show'+(bad?' bad':'');clearTimeout(tt);tt=setTimeout(()=>t.className='',3800)}
+const msg=m=>$('#msg').textContent=m||'';
+const load=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('Could not open that image'));i.src=src});
 
-// ---------- capture ----------
-function prep(file){return new Promise((res,rej)=>{
-  const img=new Image();img.onload=()=>{
-    const m=1800,k=Math.min(1,m/Math.max(img.width,img.height));
-    const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
-    const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);
-    if($('#enh').checked){
-      const d=x.getImageData(0,0,c.width,c.height),p=d.data;let lo=255,hi=0;
-      for(let i=0;i<p.length;i+=4){const g=.299*p[i]+.587*p[i+1]+.114*p[i+2];p[i]=g;if(g<lo)lo=g;if(g>hi)hi=g}
-      const a=Math.max(1,hi-lo),lo2=lo+a*.04,sc=255/(a*.88);
-      for(let i=0;i<p.length;i+=4){const v=Math.max(0,Math.min(255,(p[i]-lo2)*sc));p[i]=p[i+1]=p[i+2]=v}
-      x.putImageData(d,0,0);
-    }
-    res({w:c.width,h:c.height,img:c.toDataURL('image/jpeg',.85),text:''});
-  };img.onerror=()=>rej(new Error('Could not read image'));img.src=URL.createObjectURL(file);
-});}
-async function add(files){
-  st('Preparing images...');
-  for(const f of files){try{pages.push(await prep(f))}catch(e){st(e.message)}}
-  st(files.length+' page(s) added.');render();
+// ---------- add pages ----------
+async function prep(file){
+  const u=URL.createObjectURL(file),img=await load(u);URL.revokeObjectURL(u);
+  const k=Math.min(1,1800/Math.max(img.width,img.height)),c=document.createElement('canvas');
+  c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+  const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);
+  if($('#enh').checked){
+    const d=x.getImageData(0,0,c.width,c.height),p=d.data;let lo=255,hi=0;
+    for(let i=0;i<p.length;i+=4){const g=.299*p[i]+.587*p[i+1]+.114*p[i+2];p[i]=g;if(g<lo)lo=g;if(g>hi)hi=g}
+    const a=Math.max(1,hi-lo),l2=lo+a*.04,s=255/(a*.88);
+    for(let i=0;i<p.length;i+=4){p[i]=p[i+1]=p[i+2]=Math.max(0,Math.min(255,(p[i]-l2)*s))}
+    x.putImageData(d,0,0);
+  }
+  return{w:c.width,h:c.height,img:c.toDataURL('image/jpeg',.85),text:'',read:false};
 }
-$('#cam').onchange=e=>{add([...e.target.files]);e.target.value=''};
-$('#up').onchange=e=>{add([...e.target.files]);e.target.value=''};
+async function add(files){
+  files=[...files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;
+  msg('Preparing '+files.length+' image(s)...');
+  for(const f of files){try{pages.push(await prep(f))}catch(e){toast(e.message,1)}}
+  msg('');render();toast(files.length+' page'+(files.length>1?'s':'')+' added');
+  if($('#auto').checked)ocr();
+}
+$('#cam').onchange=e=>{add(e.target.files);e.target.value=''};
+$('#up').onchange=e=>{add(e.target.files);e.target.value=''};
+const z=$('#zone');
+['dragenter','dragover'].forEach(n=>z.addEventListener(n,e=>{e.preventDefault();z.classList.add('over')}));
+['dragleave','drop'].forEach(n=>z.addEventListener(n,e=>{e.preventDefault();z.classList.remove('over')}));
+z.addEventListener('drop',e=>add(e.dataTransfer.files));
+addEventListener('paste',e=>add([...(e.clipboardData?e.clipboardData.files:[])]));
 
-// ---------- render ----------
+// ---------- page list ----------
 function render(){
-  const box=$('#pages');
-  if(!pages.length){box.innerHTML='<div class="empty">No pages yet. Scan or upload a document to start.</div>'}
-  else{box.innerHTML='';pages.forEach((p,i)=>{
+  const box=$('#pages');box.innerHTML='';
+  if(!pages.length)box.innerHTML='<div class="empty">Your pages will appear here.</div>';
+  pages.forEach((p,i)=>{
     const d=document.createElement('div');d.className='page';
-    d.innerHTML='<img alt="Page '+(i+1)+'"><div><div class="ph"><span>Page '+(i+1)+'</span><button>Delete</button></div><textarea placeholder="Text appears here after OCR. You can edit it." aria-label="Text of page '+(i+1)+'"></textarea></div>';
+    d.innerHTML='<div class="thumb"><img alt=""><b>'+(i+1)+'</b></div><div><div class="tools"><button data-a="rot" aria-label="Rotate page '+(i+1)+'">Rotate</button><button data-a="up" aria-label="Move page '+(i+1)+' up">Up</button><button data-a="dn" aria-label="Move page '+(i+1)+' down">Down</button><button data-a="del" class="del" aria-label="Delete page '+(i+1)+'">Delete</button></div><textarea aria-label="Text of page '+(i+1)+'" placeholder="Text from this page appears here."></textarea></div>';
     d.querySelector('img').src=p.img;
     const t=d.querySelector('textarea');t.value=p.text;t.oninput=()=>p.text=t.value;
-    d.querySelector('button').onclick=()=>{pages.splice(i,1);render()};
+    d.querySelector('[data-a=up]').disabled=i===0;d.querySelector('[data-a=dn]').disabled=i===pages.length-1;
+    d.querySelectorAll('button').forEach(b=>b.onclick=()=>act(i,b.dataset.a));
     box.appendChild(d);
-  });}
+  });
   const n=pages.length;
-  $('#ocr').disabled=!n;$('#clear').disabled=!n;$('#send').disabled=!n;
+  $('#clear').disabled=!n;$('#ocr').disabled=!n||busy;
   document.querySelectorAll('[data-x]').forEach(b=>b.disabled=!n);
+  $('#send').disabled=!n||!cfg.enabled;
+  $('#ocr').textContent=n&&pages.every(p=>p.read)?'Read again':'Read text';
 }
-$('#clear').onclick=()=>{if(confirm('Remove all pages?')){pages=[];render();st('')}};
+async function act(i,a){
+  if(a==='del')pages.splice(i,1);
+  else if(a==='up'||a==='dn'){const j=a==='up'?i-1:i+1;[pages[i],pages[j]]=[pages[j],pages[i]]}
+  else if(a==='rot'){
+    const p=pages[i],im=await load(p.img),c=document.createElement('canvas');c.width=im.height;c.height=im.width;
+    const x=c.getContext('2d');x.translate(c.width/2,c.height/2);x.rotate(Math.PI/2);x.drawImage(im,-im.width/2,-im.height/2);
+    Object.assign(p,{img:c.toDataURL('image/jpeg',.85),w:c.width,h:c.height,text:'',read:false});
+    render();if($('#auto').checked)ocr();return;
+  }
+  render();
+}
+$('#clear').onclick=()=>{if(confirm('Remove all pages?')){pages=[];render();msg('')}};
 
 // ---------- OCR ----------
-$('#ocr').onclick=async()=>{
-  const b=$('#ocr');b.disabled=true;
+async function ocr(){
+  if(busy)return;busy=true;render();
+  const bar=$('#bar'),fill=$('#fill');bar.classList.add('on');
   try{
-    let i=0;
-    const w=await Tesseract.createWorker($('#lang').value,1,{logger:m=>{if(m.status==='recognizing text')st('Reading page '+(i+1)+' of '+pages.length+': '+Math.round(m.progress*100)+'%');else if(m.status)st('Loading '+m.status+'...')}});
-    for(;i<pages.length;i++){const r=await w.recognize(pages[i].img);pages[i].text=r.data.text.trim();}
-    await w.terminate();st('Done. Check the text and fix any mistakes before exporting.');render();
-  }catch(e){st('OCR failed: '+e.message+'. Check your internet connection and try again.');}
-  b.disabled=false;
-};
+    let todo=pages.filter(p=>!p.read);if(!todo.length)todo=pages.slice();
+    todo.forEach(p=>p.read=false);
+    let n=0,total=todo.length;
+    const w=await Tesseract.createWorker($('#lang').value,1,{logger:m=>{
+      if(m.status==='recognizing text'){fill.style.width=((n+m.progress)/total*100)+'%';msg('Reading page '+Math.min(n+1,total)+' of '+total+'...')}
+      else if(m.status&&m.status.includes('load'))msg('Getting ready (first time only)...')}});
+    for(const p of todo){p.text=(await w.recognize(p.img)).data.text.trim();p.read=true;n++;fill.style.width=(n/total*100)+'%'}
+    await w.terminate();msg('Text ready. Check it, then export.');
+  }catch(e){msg('');toast('Could not read text. Check your internet connection and try again.',1)}
+  busy=false;bar.classList.remove('on');fill.style.width='0';render();
+  if($('#auto').checked&&pages.some(p=>!p.read))ocr();
+}
+$('#ocr').onclick=ocr;
 
 // ---------- export ----------
 const stamp=()=>'scan-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
 function save(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
 const latin=s=>s.replace(/[^\x09\x0A\x0D\x20-\xFF]/g,'');
 const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-function csv(rows){return rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n')}
+const csv=rows=>rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
 const lines=()=>{const r=[['Page','Line','Text']];pages.forEach((p,i)=>p.text.split(/\r?\n/).filter(l=>l.trim()).forEach((l,j)=>r.push([i+1,j+1,l])));return r};
 const E={
-  pdf(){const{jsPDF}=window.jspdf;const d=new jsPDF({unit:'pt',format:'a4'});const W=d.internal.pageSize.getWidth(),H=d.internal.pageSize.getHeight();
+  pdf(){const{jsPDF}=window.jspdf,d=new jsPDF({unit:'pt',format:'a4'}),W=d.internal.pageSize.getWidth(),H=d.internal.pageSize.getHeight();
     pages.forEach((p,i)=>{if(i)d.addPage();const k=Math.min((W-40)/p.w,(H-40)/p.h),w=p.w*k,h=p.h*k,x=(W-w)/2,y=(H-h)/2;
       d.addImage(p.img,'JPEG',x,y,w,h);
       try{const t=latin(p.text);if(t){d.setFontSize(8);d.text(d.splitTextToSize(t,w),x,y+10,{renderingMode:'invisible'})}}catch(e){}});
     d.save(stamp()+'.pdf')},
-  pdft(){const{jsPDF}=window.jspdf;const d=new jsPDF({unit:'pt',format:'a4'});d.setFontSize(11);const H=d.internal.pageSize.getHeight();let y=48;
+  pdft(){const{jsPDF}=window.jspdf,d=new jsPDF({unit:'pt',format:'a4'}),H=d.internal.pageSize.getHeight();let y=48;d.setFontSize(11);
     d.splitTextToSize(latin(pages.map((p,i)=>'--- Page '+(i+1)+' ---\n'+p.text).join('\n\n')),500).forEach(l=>{if(y>H-48){d.addPage();y=48}d.text(l,48,y);y+=15});
     d.save(stamp()+'.pdf')},
   xlsx(){const wb=XLSX.utils.book_new();
@@ -195,32 +264,40 @@ const E={
   txt(){save(new Blob([pages.map((p,i)=>'--- Page '+(i+1)+' ---\n'+p.text).join('\n\n')],{type:'text/plain;charset=utf-8'}),stamp()+'.txt')},
   json(){save(new Blob([JSON.stringify(pages.map((p,i)=>({page:i+1,text:p.text})),null,2)],{type:'application/json'}),stamp()+'.json')}
 };
-document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{try{E[b.dataset.x]();st('Downloaded.')}catch(e){st('Export failed: '+e.message)}});
+document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{try{E[b.dataset.x]();toast('Download started')}catch(e){toast('Export failed. Please try again.',1)}});
 
-// ---------- Google Sheets ----------
-$('#gs').value=LS.get('gs')||'';
-$('#gs').onchange=()=>LS.set('gs',$('#gs').value.trim());
+// ---------- Google Sheets (server writes with a shared service account) ----------
+$('#gs').value=LS.get('gs')||'';$('#tab').value=LS.get('tab')||'';
+fetch('api/config').then(r=>r.json()).then(c=>{
+  cfg=c;const n=$('#gsnote');
+  if(!c.enabled)n.textContent='Google Sheets is not connected on the server yet.';
+  else{n.innerHTML='Share your sheet with <b>'+esc(c.email)+'</b> as Editor first.';if(c.defaultSheet)$('#gs').placeholder='Using the default sheet. Paste a link to use another.'}
+  render();
+}).catch(()=>{$('#gsnote').textContent='Google Sheets needs the Docscan server (not available on this host).'});
 $('#send').onclick=async()=>{
-  const u=$('#gs').value.trim();LS.set('gs',u);
-  if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(u)){st('Paste a valid Apps Script web app URL first (see setup steps).');return}
-  const ts=new Date().toLocaleString();
+  const link=$('#gs').value.trim(),tab=$('#tab').value.trim(),m=link.match(/\/d\/([\w-]+)/);
+  if(link&&!m&&!/^[\w-]{20,}$/.test(link))return toast('That does not look like a Google Sheet link.',1);
+  if(!link&&!cfg.defaultSheet)return toast('Paste your Google Sheet link first.',1);
+  LS.set('gs',link);LS.set('tab',tab);
+  const b=$('#send');b.disabled=true;b.textContent='Sending...';
   try{
-    await fetch(u,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({rows:pages.map((p,i)=>[ts,i+1,p.text])})});
-    st('Sent '+pages.length+' row(s). Open your sheet to confirm they arrived.');
-  }catch(e){st('Could not reach Google: '+e.message)}
+    const ts=new Date().toLocaleString(),r=await fetch('api/sheets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sheetId:m?m[1]:link,tab,rows:pages.map((p,i)=>[ts,i+1,p.text])})});
+    const j=await r.json();if(!r.ok)throw new Error(j.error);
+    toast('Added '+j.added+' row(s) to "'+j.tab+'"');
+  }catch(e){toast(e.message||'Could not send to Google Sheets.',1)}
+  b.textContent='Send to Google Sheets';render();
 };
-$('#copy').onclick=()=>navigator.clipboard.writeText($('#code').textContent).then(()=>st('Code copied.'));
 
 // ---------- install popup ----------
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
-const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
-const mobile=/android|iphone|ipad|ipod/i.test(navigator.userAgent);
-const showI=()=>{if(!standalone&&LS.get('idismiss')!==String(new Date().toDateString()))$('#install').style.display='flex'};
+const ua=navigator.userAgent,ios=/iphone|ipad|ipod/i.test(ua),mobile=/android|iphone|ipad|ipod/i.test(ua);
+const today=new Date().toDateString();
+const showI=()=>{if(!standalone&&LS.get('idismiss')!==today)$('#install').style.display='flex'};
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();dfp=e;if(mobile)showI()});
 $('#iyes').onclick=async()=>{if(dfp){dfp.prompt();await dfp.userChoice;dfp=null}$('#install').style.display='none'};
-$('#ino').onclick=()=>{LS.set('idismiss',new Date().toDateString());$('#install').style.display='none'};
+$('#ino').onclick=()=>{LS.set('idismiss',today);$('#install').style.display='none'};
 addEventListener('appinstalled',()=>$('#install').style.display='none');
-if(ios&&!standalone){$('#itext').textContent='To install: tap the Share button in Safari, then Add to Home Screen.';$('#iyes').style.display='none';showI()}
+if(ios&&!standalone){$('#itext').textContent='To install: tap Share in Safari, then Add to Home Screen.';$('#iyes').style.display='none';showI()}
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 render();
 </script>
