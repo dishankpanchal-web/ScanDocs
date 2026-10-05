@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Docscan</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14202B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+<style>
+:root{--bg:#EEF2F5;--surface:#fff;--ink:#14202B;--mute:#5B6B78;--line:#D3DCE3;--amber:#F2A900;--on-amber:#14202B;--ink-btn:#14202B;--on-ink:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root{--bg:#0E1820;--surface:#172531;--ink:#EAF0F4;--mute:#93A4B1;--line:#2A3B49;--ink-btn:#EAF0F4;--on-ink:#14202B}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:880px;margin:0 auto;padding:16px}
+h1{font-size:1.5rem;margin:8px 0 2px;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:0 0 16px}
+.bar{height:4px;background:var(--amber);border-radius:2px;margin-bottom:16px}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+button,label.btn,select{font:inherit;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;min-height:44px}
+button.primary,label.primary{background:var(--amber);border-color:var(--amber);color:var(--on-amber);font-weight:600}
+button.dark{background:var(--ink-btn);color:var(--on-ink);border-color:var(--ink-btn)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,label.btn:focus-within,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+.panel h2{font-size:1rem;margin:0 0 8px}
+.opts{display:flex;flex-wrap:wrap;gap:12px;align-items:center;color:var(--mute)}
+.pages{display:grid;gap:12px}
+.page{display:grid;grid-template-columns:120px 1fr;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
+.page img{width:100%;border-radius:6px;border:1px solid var(--line)}
+.page textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:14px/1.45 ui-monospace,Menlo,Consolas,monospace;padding:8px;resize:vertical}
+.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-weight:600}
+.ph button{min-height:32px;padding:2px 10px}
+.empty{color:var(--mute);text-align:center;padding:32px 12px;border:2px dashed var(--line);border-radius:12px}
+input[type=url]{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg);color:var(--ink);font:inherit}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font-size:12px}
+details summary{cursor:pointer;color:var(--mute)}
+#status{min-height:1.5em;color:var(--mute)}
+#install{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:520px;margin:auto;background:var(--ink-btn);color:var(--on-ink);border-radius:14px;padding:14px;display:none;gap:10px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.3);z-index:9}
+#install p{margin:0;flex:1;font-size:14px}
+#install button{min-height:40px}
+@media(max-width:520px){.page{grid-template-columns:84px 1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Docscan</h1>
+<p class="sub">Scan pages, read the text, export it anywhere.</p>
+<div class="bar"></div>
+
+<div class="row">
+  <label class="btn primary">Scan with camera<input id="cam" type="file" accept="image/*" capture="environment"></label>
+  <label class="btn">Upload images<input id="up" type="file" accept="image/*" multiple></label>
+  <button id="ocr" class="dark" disabled>Read text (OCR)</button>
+  <button id="clear" disabled>Clear all</button>
+</div>
+<div class="opts">
+  <label>Language <select id="lang"><option value="eng">English</option><option value="eng+hin">English + Hindi</option><option value="eng+guj">English + Gujarati</option><option value="hin">Hindi</option><option value="guj">Gujarati</option></select></label>
+  <label><input type="checkbox" id="enh" checked> Clean up scan (grayscale, sharpen contrast)</label>
+</div>
+<div id="status" role="status"></div>
+
+<div id="pages" class="pages"><div class="empty">No pages yet. Scan or upload a document to start.</div></div>
+
+<div class="panel">
+  <h2>Download</h2>
+  <div class="row" style="margin:0">
+    <button data-x="pdf">PDF (scan, searchable)</button>
+    <button data-x="pdft">PDF (text only)</button>
+    <button data-x="xlsx">Excel .xlsx</button>
+    <button data-x="csv">CSV</button>
+    <button data-x="doc">Word .doc</button>
+    <button data-x="txt">Text .txt</button>
+    <button data-x="json">JSON</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Send to Google Sheets</h2>
+  <input id="gs" type="url" placeholder="Paste your Apps Script web app URL">
+  <div class="row"><button id="send" class="dark" disabled>Add pages to sheet</button></div>
+  <details><summary>One-time setup (2 minutes)</summary>
+    <ol style="color:var(--mute)">
+      <li>Open a Google Sheet, then Extensions &gt; Apps Script.</li>
+      <li>Paste the code below and save.</li>
+      <li>Deploy &gt; New deployment &gt; Web app. Execute as: Me. Access: Anyone.</li>
+      <li>Copy the web app URL and paste it above.</li>
+    </ol>
+<pre id="code">function doPost(e) {
+  var d = JSON.parse(e.postData.contents);
+  var s = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  d.rows.forEach(function (r) { s.appendRow(r); });
+  return ContentService.createTextOutput('ok');
+}</pre>
+    <button id="copy">Copy code</button>
+  </details>
+</div>
+</main>
+
+<div id="install" role="dialog" aria-label="Install app">
+  <p id="itext">Install Docscan on your phone for quick scanning, even offline.</p>
+  <button id="iyes" class="primary">Install</button>
+  <button id="ino">Not now</button>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+let pages=[],dfp=null;
+const st=m=>$('#status').textContent=m||'';
+const LS={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+
+// ---------- capture ----------
+function prep(file){return new Promise((res,rej)=>{
+  const img=new Image();img.onload=()=>{
+    const m=1800,k=Math.min(1,m/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+    const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);
+    if($('#enh').checked){
+      const d=x.getImageData(0,0,c.width,c.height),p=d.data;let lo=255,hi=0;
+      for(let i=0;i<p.length;i+=4){const g=.299*p[i]+.587*p[i+1]+.114*p[i+2];p[i]=g;if(g<lo)lo=g;if(g>hi)hi=g}
+      const a=Math.max(1,hi-lo),lo2=lo+a*.04,sc=255/(a*.88);
+      for(let i=0;i<p.length;i+=4){const v=Math.max(0,Math.min(255,(p[i]-lo2)*sc));p[i]=p[i+1]=p[i+2]=v}
+      x.putImageData(d,0,0);
+    }
+    res({w:c.width,h:c.height,img:c.toDataURL('image/jpeg',.85),text:''});
+  };img.onerror=()=>rej(new Error('Could not read image'));img.src=URL.createObjectURL(file);
+});}
+async function add(files){
+  st('Preparing images...');
+  for(const f of files){try{pages.push(await prep(f))}catch(e){st(e.message)}}
+  st(files.length+' page(s) added.');render();
+}
+$('#cam').onchange=e=>{add([...e.target.files]);e.target.value=''};
+$('#up').onchange=e=>{add([...e.target.files]);e.target.value=''};
+
+// ---------- render ----------
+function render(){
+  const box=$('#pages');
+  if(!pages.length){box.innerHTML='<div class="empty">No pages yet. Scan or upload a document to start.</div>'}
+  else{box.innerHTML='';pages.forEach((p,i)=>{
+    const d=document.createElement('div');d.className='page';
+    d.innerHTML='<img alt="Page '+(i+1)+'"><div><div class="ph"><span>Page '+(i+1)+'</span><button>Delete</button></div><textarea placeholder="Text appears here after OCR. You can edit it." aria-label="Text of page '+(i+1)+'"></textarea></div>';
+    d.querySelector('img').src=p.img;
+    const t=d.querySelector('textarea');t.value=p.text;t.oninput=()=>p.text=t.value;
+    d.querySelector('button').onclick=()=>{pages.splice(i,1);render()};
+    box.appendChild(d);
+  });}
+  const n=pages.length;
+  $('#ocr').disabled=!n;$('#clear').disabled=!n;$('#send').disabled=!n;
+  document.querySelectorAll('[data-x]').forEach(b=>b.disabled=!n);
+}
+$('#clear').onclick=()=>{if(confirm('Remove all pages?')){pages=[];render();st('')}};
+
+// ---------- OCR ----------
+$('#ocr').onclick=async()=>{
+  const b=$('#ocr');b.disabled=true;
+  try{
+    let i=0;
+    const w=await Tesseract.createWorker($('#lang').value,1,{logger:m=>{if(m.status==='recognizing text')st('Reading page '+(i+1)+' of '+pages.length+': '+Math.round(m.progress*100)+'%');else if(m.status)st('Loading '+m.status+'...')}});
+    for(;i<pages.length;i++){const r=await w.recognize(pages[i].img);pages[i].text=r.data.text.trim();}
+    await w.terminate();st('Done. Check the text and fix any mistakes before exporting.');render();
+  }catch(e){st('OCR failed: '+e.message+'. Check your internet connection and try again.');}
+  b.disabled=false;
+};
+
+// ---------- export ----------
+const stamp=()=>'scan-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+function save(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+const latin=s=>s.replace(/[^\x09\x0A\x0D\x20-\xFF]/g,'');
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function csv(rows){return rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n')}
+const lines=()=>{const r=[['Page','Line','Text']];pages.forEach((p,i)=>p.text.split(/\r?\n/).filter(l=>l.trim()).forEach((l,j)=>r.push([i+1,j+1,l])));return r};
+const E={
+  pdf(){const{jsPDF}=window.jspdf;const d=new jsPDF({unit:'pt',format:'a4'});const W=d.internal.pageSize.getWidth(),H=d.internal.pageSize.getHeight();
+    pages.forEach((p,i)=>{if(i)d.addPage();const k=Math.min((W-40)/p.w,(H-40)/p.h),w=p.w*k,h=p.h*k,x=(W-w)/2,y=(H-h)/2;
+      d.addImage(p.img,'JPEG',x,y,w,h);
+      try{const t=latin(p.text);if(t){d.setFontSize(8);d.text(d.splitTextToSize(t,w),x,y+10,{renderingMode:'invisible'})}}catch(e){}});
+    d.save(stamp()+'.pdf')},
+  pdft(){const{jsPDF}=window.jspdf;const d=new jsPDF({unit:'pt',format:'a4'});d.setFontSize(11);const H=d.internal.pageSize.getHeight();let y=48;
+    d.splitTextToSize(latin(pages.map((p,i)=>'--- Page '+(i+1)+' ---\n'+p.text).join('\n\n')),500).forEach(l=>{if(y>H-48){d.addPage();y=48}d.text(l,48,y);y+=15});
+    d.save(stamp()+'.pdf')},
+  xlsx(){const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(lines()),'Lines');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Page','Text']].concat(pages.map((p,i)=>[i+1,p.text]))),'Pages');
+    XLSX.writeFile(wb,stamp()+'.xlsx')},
+  csv(){save(new Blob(['\ufeff'+csv(lines())],{type:'text/csv;charset=utf-8'}),stamp()+'.csv')},
+  doc(){const h='<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head><body>'+pages.map((p,i)=>'<h3>Page '+(i+1)+'</h3><p>'+esc(p.text).replace(/\n/g,'<br>')+'</p>').join('')+'</body></html>';
+    save(new Blob(['\ufeff'+h],{type:'application/msword'}),stamp()+'.doc')},
+  txt(){save(new Blob([pages.map((p,i)=>'--- Page '+(i+1)+' ---\n'+p.text).join('\n\n')],{type:'text/plain;charset=utf-8'}),stamp()+'.txt')},
+  json(){save(new Blob([JSON.stringify(pages.map((p,i)=>({page:i+1,text:p.text})),null,2)],{type:'application/json'}),stamp()+'.json')}
+};
+document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{try{E[b.dataset.x]();st('Downloaded.')}catch(e){st('Export failed: '+e.message)}});
+
+// ---------- Google Sheets ----------
+$('#gs').value=LS.get('gs')||'';
+$('#gs').onchange=()=>LS.set('gs',$('#gs').value.trim());
+$('#send').onclick=async()=>{
+  const u=$('#gs').value.trim();LS.set('gs',u);
+  if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(u)){st('Paste a valid Apps Script web app URL first (see setup steps).');return}
+  const ts=new Date().toLocaleString();
+  try{
+    await fetch(u,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({rows:pages.map((p,i)=>[ts,i+1,p.text])})});
+    st('Sent '+pages.length+' row(s). Open your sheet to confirm they arrived.');
+  }catch(e){st('Could not reach Google: '+e.message)}
+};
+$('#copy').onclick=()=>navigator.clipboard.writeText($('#code').textContent).then(()=>st('Code copied.'));
+
+// ---------- install popup ----------
+const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+const mobile=/android|iphone|ipad|ipod/i.test(navigator.userAgent);
+const showI=()=>{if(!standalone&&LS.get('idismiss')!==String(new Date().toDateString()))$('#install').style.display='flex'};
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();dfp=e;if(mobile)showI()});
+$('#iyes').onclick=async()=>{if(dfp){dfp.prompt();await dfp.userChoice;dfp=null}$('#install').style.display='none'};
+$('#ino').onclick=()=>{LS.set('idismiss',new Date().toDateString());$('#install').style.display='none'};
+addEventListener('appinstalled',()=>$('#install').style.display='none');
+if(ios&&!standalone){$('#itext').textContent='To install: tap the Share button in Safari, then Add to Home Screen.';$('#iyes').style.display='none';showI()}
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+render();
+</script>
+</body>
+</html>
