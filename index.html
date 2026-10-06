@@ -64,6 +64,8 @@ select,input[type=url],input[type=text]{border:1px solid var(--line);border-radi
 .thumb b{position:absolute;left:6px;top:6px;background:var(--ink);color:var(--card);font:600 .75rem system-ui;padding:1px 8px;border-radius:99px}
 .tools{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
 .tools button{min-height:34px;padding:0 10px;font-size:.85rem;font-weight:500}
+.cf{font-size:.78rem;padding:3px 10px;border-radius:99px;background:var(--soft);color:var(--mute);align-self:center;border:1px solid var(--line)}
+.cf.low{color:var(--err);border-color:var(--err)}
 .tools .del{margin-left:auto;color:var(--err)}
 textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:10px;background:var(--soft);color:var(--ink);padding:10px;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -91,7 +93,7 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:
 
 <section>
   <h2><span class="step">1</span>Add pages</h2>
-  <p class="hint">Photograph a page or pick images from your gallery.</p>
+  <p class="hint">Photograph a page or pick images from your gallery. For best results, use bright even light, keep the page flat and fill the frame.</p>
   <div id="zone">
     <div class="row">
       <label class="btn primary">Scan with camera<input id="cam" type="file" accept="image/*" capture="environment"></label>
@@ -158,19 +160,56 @@ const msg=m=>$('#msg').textContent=m||'';
 const load=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('Could not open that image'));i.src=src});
 
 // ---------- add pages ----------
+function flatten(c){
+  // evens out shadows and uneven light so text is dark and the page is white
+  const w=c.width,h=c.height,x=c.getContext('2d'),im=x.getImageData(0,0,w,h),p=im.data,n=w*h,g=new Uint8Array(n);
+  for(let i=0;i<n;i++)g[i]=.299*p[i*4]+.587*p[i*4+1]+.114*p[i*4+2];
+  const W=w+1,I=new Float64Array(W*(h+1));
+  for(let y=1;y<=h;y++){let r=0;for(let xx=1;xx<=w;xx++){r+=g[(y-1)*w+xx-1];I[y*W+xx]=I[(y-1)*W+xx]+r}}
+  const R=Math.max(15,Math.round(Math.min(w,h)/16));
+  for(let y=0;y<h;y++){const y0=Math.max(0,y-R),y1=Math.min(h,y+R+1);
+    for(let xx=0;xx<w;xx++){const x0=Math.max(0,xx-R),x1=Math.min(w,xx+R+1);
+      const m=(I[y1*W+x1]-I[y0*W+x1]-I[y1*W+x0]+I[y0*W+x0])/((y1-y0)*(x1-x0));
+      const v=(g[y*w+xx]/Math.max(m,1)-.62)/.30*255,o=(y*w+xx)*4;
+      p[o]=p[o+1]=p[o+2]=v<0?0:v>255?255:v}}
+  x.putImageData(im,0,0);return c;
+}
+function skewAngle(c){
+  const k=700/Math.max(c.width,c.height),w=Math.round(c.width*k),h=Math.round(c.height*k),s=document.createElement('canvas');
+  s.width=w;s.height=h;const x=s.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(c,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data,pts=[];
+  for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++)if(d[(y*w+xx)*4]<140)pts.push(xx,y);
+  if(pts.length<400)return 0;
+  let best=0,bs=-1;
+  for(let a=-8;a<=8;a+=.5){
+    const r=a*Math.PI/180,sn=Math.sin(r),cs=Math.cos(r),H=new Float32Array(h+2*w+4);
+    for(let i=0;i<pts.length;i+=2)H[Math.round(pts[i]*sn+pts[i+1]*cs)+w]++;
+    let t=0;for(let i=0;i<H.length;i++)t+=H[i]*H[i];
+    if(t>bs){bs=t;best=a}
+  }
+  return best;
+}
+function tilt(c,deg){
+  const o=document.createElement('canvas');o.width=c.width;o.height=c.height;const x=o.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,o.width,o.height);x.translate(o.width/2,o.height/2);x.rotate(deg*Math.PI/180);x.drawImage(c,-c.width/2,-c.height/2);return o;
+}
+function turn(c,deg){
+  const sw=deg%180!==0,o=document.createElement('canvas');o.width=sw?c.height:c.width;o.height=sw?c.width:c.height;
+  const x=o.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,o.width,o.height);x.translate(o.width/2,o.height/2);x.rotate(deg*Math.PI/180);x.drawImage(c,-c.width/2,-c.height/2);return o;
+}
+async function ocrCanvas(p){
+  const im=await load(p.img),L=Math.max(im.width,im.height),k=Math.min(3,Math.max(1,2400/L)),c=document.createElement('canvas');
+  c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+  const x=c.getContext('2d');x.imageSmoothingQuality='high';x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+  flatten(c);const a=skewAngle(c);return Math.abs(a)>=.5?tilt(c,a):c;
+}
 async function prep(file){
   const u=URL.createObjectURL(file),img=await load(u);URL.revokeObjectURL(u);
-  const k=Math.min(1,1800/Math.max(img.width,img.height)),c=document.createElement('canvas');
+  const k=Math.min(1,3000/Math.max(img.width,img.height)),c=document.createElement('canvas');
   c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
-  const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);
-  if($('#enh').checked){
-    const d=x.getImageData(0,0,c.width,c.height),p=d.data;let lo=255,hi=0;
-    for(let i=0;i<p.length;i+=4){const g=.299*p[i]+.587*p[i+1]+.114*p[i+2];p[i]=g;if(g<lo)lo=g;if(g>hi)hi=g}
-    const a=Math.max(1,hi-lo),l2=lo+a*.04,s=255/(a*.88);
-    for(let i=0;i<p.length;i+=4){p[i]=p[i+1]=p[i+2]=Math.max(0,Math.min(255,(p[i]-l2)*s))}
-    x.putImageData(d,0,0);
-  }
-  return{w:c.width,h:c.height,img:c.toDataURL('image/jpeg',.85),text:'',read:false};
+  const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);
+  if($('#enh').checked)flatten(c);
+  return{w:c.width,h:c.height,img:c.toDataURL('image/jpeg',.9),text:'',read:false,conf:null};
 }
 async function add(files){
   files=[...files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;
@@ -195,6 +234,7 @@ function render(){
     const d=document.createElement('div');d.className='page';
     d.innerHTML='<div class="thumb"><img alt=""><b>'+(i+1)+'</b></div><div><div class="tools"><button data-a="rot" aria-label="Rotate page '+(i+1)+'">Rotate</button><button data-a="up" aria-label="Move page '+(i+1)+' up">Up</button><button data-a="dn" aria-label="Move page '+(i+1)+' down">Down</button><button data-a="del" class="del" aria-label="Delete page '+(i+1)+'">Delete</button></div><textarea aria-label="Text of page '+(i+1)+'" placeholder="Text from this page appears here."></textarea></div>';
     d.querySelector('img').src=p.img;
+    if(p.read&&p.conf!=null){const q=document.createElement('span');q.className='cf'+(p.conf<70?' low':'');q.textContent=(p.conf<70?'Low accuracy ':'Accuracy ')+p.conf+'%';d.querySelector('.tools').prepend(q)}
     const t=d.querySelector('textarea');t.value=p.text;t.oninput=()=>p.text=t.value;
     d.querySelector('[data-a=up]').disabled=i===0;d.querySelector('[data-a=dn]').disabled=i===pages.length-1;
     d.querySelectorAll('button').forEach(b=>b.onclick=()=>act(i,b.dataset.a));
@@ -212,7 +252,7 @@ async function act(i,a){
   else if(a==='rot'){
     const p=pages[i],im=await load(p.img),c=document.createElement('canvas');c.width=im.height;c.height=im.width;
     const x=c.getContext('2d');x.translate(c.width/2,c.height/2);x.rotate(Math.PI/2);x.drawImage(im,-im.width/2,-im.height/2);
-    Object.assign(p,{img:c.toDataURL('image/jpeg',.85),w:c.width,h:c.height,text:'',read:false});
+    Object.assign(p,{img:c.toDataURL('image/jpeg',.9),w:c.width,h:c.height,text:'',read:false,conf:null});
     render();if($('#auto').checked)ocr();return;
   }
   render();
@@ -220,18 +260,36 @@ async function act(i,a){
 $('#clear').onclick=()=>{if(confirm('Remove all pages?')){pages=[];render();msg('')}};
 
 // ---------- OCR ----------
+const BEST='https://tessdata.projectnaptha.com/4.0.0_best';
+const sc=d=>d.words?d.words.filter(w=>w.confidence>=60).length:d.text.length*d.confidence/100;
+async function best(w,cv){
+  const run=async(c,psm)=>{await w.setParameters({tessedit_pageseg_mode:psm});return (await w.recognize(c)).data};
+  let b=await run(cv,'3');
+  if(b.confidence<80){const r=await run(cv,'6');if(sc(r)>sc(b))b=r}
+  if(b.confidence<45){for(const a of [90,270,180]){const r=await run(turn(cv,a),'3');if(sc(r)>sc(b)*1.3)b=r}}
+  return b;
+}
 async function ocr(){
   if(busy)return;busy=true;render();
   const bar=$('#bar'),fill=$('#fill');bar.classList.add('on');
   try{
     let todo=pages.filter(p=>!p.read);if(!todo.length)todo=pages.slice();
     todo.forEach(p=>p.read=false);
-    let n=0,total=todo.length;
-    const w=await Tesseract.createWorker($('#lang').value,1,{logger:m=>{
-      if(m.status==='recognizing text'){fill.style.width=((n+m.progress)/total*100)+'%';msg('Reading page '+Math.min(n+1,total)+' of '+total+'...')}
-      else if(m.status&&m.status.includes('load'))msg('Getting ready (first time only)...')}});
-    for(const p of todo){p.text=(await w.recognize(p.img)).data.text.trim();p.read=true;n++;fill.style.width=(n/total*100)+'%'}
-    await w.terminate();msg('Text ready. Check it, then export.');
+    let n=0,pg=0;const total=todo.length,lang=$('#lang').value;
+    const logger=m=>{
+      if(m.status==='recognizing text'){pg=Math.max(pg,m.progress);fill.style.width=Math.min(98,(n+pg)/total*100)+'%';msg('Reading page '+Math.min(n+1,total)+' of '+total+'...')}
+      else if(m.status&&m.status.includes('load'))msg('Getting ready (first time only, this can take a minute)...')};
+    let w;
+    try{w=await Tesseract.createWorker(lang,1,{langPath:BEST,logger})}catch(e){w=await Tesseract.createWorker(lang,1,{logger})}
+    await w.setParameters({preserve_interword_spaces:'1',user_defined_dpi:'300'});
+    for(const p of todo){
+      pg=0;msg('Preparing page '+(n+1)+' of '+total+'...');
+      const b=await best(w,await ocrCanvas(p));
+      p.text=b.text.trim();p.conf=Math.round(b.confidence);p.read=true;n++;fill.style.width=(n/total*100)+'%';
+    }
+    await w.terminate();
+    const weak=todo.filter(p=>p.text&&p.conf<70).map(p=>pages.indexOf(p)+1).filter(i=>i>0);
+    msg(weak.length?'Page '+weak.join(', ')+' may contain errors. A brighter, flatter, closer photo reads better.':'Text ready. Check it, then export.');
   }catch(e){msg('');toast('Could not read text. Check your internet connection and try again.',1)}
   busy=false;bar.classList.remove('on');fill.style.width='0';render();
   if($('#auto').checked&&pages.some(p=>!p.read))ocr();
